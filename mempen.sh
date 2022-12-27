@@ -1,22 +1,26 @@
 #!/bin/bash
 
 write_command='False'
-dest_dir=~/.ilistmem
+dest_dir=~/.mempen
 config=${dest_dir}/config.ini
 config_data="\
 store='${dest_dir}/store'
 store_comms='${dest_dir}/store/comms'
 "
 
+function error_signature() {
+    echo -e $1
+    call_help
+}
+
 function add_comm_entry() {
     [[ $comm_val1 ]] && [[ $comm_val2 ]] && [[ $comm_val3 ]] \
     && comm_valid=$(( $comm_val1 + $comm_val2 + $comm_val3 ))
-    [[ -z $comm_valid || $comm_valid != 111 ]] && echo -e "all comms options not provided\n"
+    [[ -z $comm_valid || $comm_valid != 111 ]] && error_signature "all comms options not provided\n\n"
 
     # return to: 'mkdir -p ${store}/${cmd_name}' if comm identifier baseline decided instead of tree extender
     comm_wloc_destination=${store_comms}/${comm_tree}
-    echo "what is this: "${comm_wloc_destination}
-    [[ -d "$cmd_wloc_destination" ]] && echo "Texists: "${comm_wloc_destination} || mkdir -p $comm_wloc_destination
+    [[ -d "$comm_wloc_destination" ]] || mkdir -p $comm_wloc_destination
     echo -e "${comm_cmd}" >> ${comm_wloc_destination}"/"${comm_name}
 }
 
@@ -28,7 +32,7 @@ function generate_config() {
 function validate_config() {
     # potential overwrite function when missing config (arises when new builtin values added to script)
     source "$config"
-    [[ $store && $store_comms ]] && echo "config validated well" || echo "config incomplete"
+    [[ $store && $store_comms ]] || error_signature "config incomplete\n\n"
 }
  
 function call_help() {
@@ -69,6 +73,7 @@ while getopts $opts arg; do
     esac
 done
 
-[[ ${write_command} == 'True' ]] && echo "we are writing" && add_comm_entry && echo "func called" || echo "command write fail"
+[[ ${write_command} == 'True' ]] && add_comm_entry \
+|| error_signature "command write fail\n\n"
 
 exit 0
