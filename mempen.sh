@@ -1,6 +1,7 @@
 #!/bin/bash
 
 write_command='False'
+read_command='False'
 dest_dir=~/.mempen
 config=${dest_dir}/config.ini
 config_data="\
@@ -9,14 +10,20 @@ store_comms='${dest_dir}/store/comms'
 "
 
 function error_signature() {
-    echo -e $1
+    echo -e "${1}\n"
     call_help
 }
 
+function call_comm_entry() {
+    [[ $comm_call && $comm_tree && $comm_exec ]] || error_signature "not all read comms options provided"
+    comm_rloc_destination=${store_comms}/${comm_tree}/${comm_call}
+    [[ -f "$comm_rloc_destination" ]] && $comm_exec $comm_rloc_destination || error_signature "read file not found"
+}
+
 function add_comm_entry() {
-    [[ $comm_val1 ]] && [[ $comm_val2 ]] && [[ $comm_val3 ]] \
+    [[ $comm_val1 && $comm_val2 && $comm_val3 ]] \
     && comm_valid=$(( $comm_val1 + $comm_val2 + $comm_val3 ))
-    [[ -z $comm_valid || $comm_valid != 111 ]] && error_signature "all comms options not provided\n\n"
+    [[ -z $comm_valid || $comm_valid != 111 ]] && error_signature "not all write comms options provided"
 
     # return to: 'mkdir -p ${store}/${cmd_name}' if comm identifier baseline decided instead of tree extender
     comm_wloc_destination=${store_comms}/${comm_tree}
@@ -32,7 +39,7 @@ function generate_config() {
 function validate_config() {
     # potential overwrite function when missing config (arises when new builtin values added to script)
     source "$config"
-    [[ $store && $store_comms ]] || error_signature "config incomplete\n\n"
+    [[ $store && $store_comms ]] || error_signature "config incomplete"
 }
  
 function call_help() {
@@ -44,12 +51,15 @@ function call_help() {
 [[ -f "$config" ]] || generate_config
 validate_config
 
-opts="hwn:c:t:"
+opts="hwrn:c:t:l:x:"
 
 while getopts $opts arg; do
     case "$arg" in
         w)
             write_command='True'
+            ;;
+        r)
+            read_command='True'
             ;;
         n)
             comm_name="${OPTARG}"
@@ -63,17 +73,26 @@ while getopts $opts arg; do
             comm_tree="${OPTARG}"
             comm_val1=1
             ;;
+        l)
+            comm_call="${OPTARG}"
+            ;;
+        x)
+            comm_exec="${OPTARG}"
+            ;;
         h)
             call_help
             ;;
         ?)
-            echo "Invalid option: -${OPTARG}"
+            echo "Invalid option: -${OPTARG}\n"
             call_help
             ;;
     esac
 done
 
-[[ ${write_command} == 'True' ]] && add_comm_entry \
-|| error_signature "command write fail\n\n"
+[[ ${write_command} == 'False' && ${read_command} == 'False' ]] && error_signature "command fail"
+
+[[ ${write_command} == 'True' ]] && add_comm_entry
+
+[[ ${read_command} == 'True' ]] && call_comm_entry
 
 exit 0
